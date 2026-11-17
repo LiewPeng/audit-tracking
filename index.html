@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg:#F4F3F0; --card:#FFFFFF; --ink:#24262A; --ink2:#44474D; --muted:#6D7077; --faint:#A0A2A7;
@@ -23,12 +24,12 @@ a{color:var(--accent-ink)}
 
 /* header */
 header{position:sticky;top:0;z-index:20;background:rgba(244,243,240,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.hbar{max-width:1260px;margin:0 auto;padding:16px 28px;display:flex;align-items:center;gap:28px;flex-wrap:wrap}
+.hbar{max-width:1260px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:12px;font-weight:700;font-size:19px;letter-spacing:-.01em}
 .brand .dot{width:12px;height:12px;border-radius:50%;background:var(--accent)}
 .brand small{display:block;font-weight:500;font-size:13px;color:var(--muted);letter-spacing:0}
 nav{display:flex;gap:4px;flex-wrap:wrap}
-nav a{padding:9px 16px;border-radius:999px;text-decoration:none;color:var(--ink2);font-weight:500;font-size:16px}
+nav a{padding:9px 14px;border-radius:999px;text-decoration:none;color:var(--ink2);font-weight:500;font-size:16px}
 nav a:hover{background:var(--soft)}
 nav a.on{background:var(--ink);color:#fff}
 .savestate{margin-left:auto;font-size:14px;color:var(--muted)}
@@ -66,7 +67,7 @@ h3{font-size:18px;margin:0 0 8px;font-weight:600}
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .spacer{flex:1}
 
-input[type=text],input[type=number],input[type=date],select,textarea{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 14px;font-size:16px;outline:none;min-width:0}
+input[type=text],input[type=password],input[type=number],input[type=date],select,textarea{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 14px;font-size:16px;outline:none;min-width:0}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 textarea{width:100%;min-height:96px;resize:vertical}
 label.f{display:block;font-size:14px;font-weight:600;color:var(--ink2);margin:0 0 6px}
@@ -176,6 +177,23 @@ table.sheet td.fx::after{content:"ƒ";color:var(--faint);font-size:11px;margin-l
 .reflist label{display:flex;gap:8px;align-items:flex-start;font-size:14.5px;padding:4px 0}
 .confirm{display:none;margin-top:12px}
 .confirm.on{display:flex}
+/* auth shell */
+body:not(.authed) header,body:not(.authed) main{display:none}
+body.authed #login{display:none}
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.logincard{width:min(440px,100%);padding:36px}
+.logincard h1{margin:26px 0 6px;font-size:28px}
+.logincard input{width:100%}
+.lerr{color:#9B2C2C;font-size:15px;min-height:22px;margin:-4px 0 10px}
+.userbox{margin-left:auto;display:flex;align-items:center;gap:10px}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.avatar.adm{background:var(--accent)}
+.uname{font-weight:600;font-size:15px;line-height:1.2}
+.savestate{display:block;font-size:12.5px;color:var(--faint);font-weight:500}
+.acct{display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:4px 10px 4px 4px;border-radius:12px;cursor:pointer;text-align:left}
+.acct:hover{background:var(--soft)}
+#uname small{display:inline;color:var(--muted);font-weight:500;font-size:13px;margin-left:6px}
+.banner{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
 </style>
 </head>
 <body>
@@ -188,11 +206,27 @@ table.sheet td.fx::after{content:"ƒ";color:var(--faint);font-size:11px;margin-l
       <a href="#issues" data-v="issues">Issues</a>
       <a href="#references" data-v="references">References</a>
       <a href="#engagement" data-v="engagement">Engagement</a>
+      <a href="#users" data-v="users" id="navUsers" hidden>Users</a>
     </nav>
-    <div class="savestate" id="savestate"></div>
+    <div class="userbox"><button class="acct" id="acctBtn" title="Your account"><div class="avatar" id="avatar"></div><div class="uname"><span id="uname"></span><small class="savestate" id="savestate"></small></div></button>
+      <button class="btn sm" id="signOutBtn">Sign out</button></div>
   </div>
 </header>
 <main class="wrap" id="main"></main>
+
+<div id="login" class="login">
+  <div class="card logincard">
+    <div class="brand"><span class="dot"></span><div>Audit Tracker<small>SFRS(I) · SSA</small></div></div>
+    <h1>Sign in</h1>
+    <p class="sub" style="margin-bottom:22px">Use the username and password your administrator gave you.</p>
+    <form id="loginForm">
+      <div class="field"><label class="f" for="lu">Username</label><input type="text" id="lu" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
+      <div class="field"><label class="f" for="lp">Password</label><input type="password" id="lp" autocomplete="current-password" required></div>
+      <div class="lerr" id="lerr"></div>
+      <button class="btn primary" id="lbtn" style="width:100%;justify-content:center;padding:13px">Sign in</button>
+    </form>
+  </div>
+</div>
 
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer"><div class="inner" id="drawerInner"></div></aside>
@@ -319,25 +353,128 @@ const TESTS = {
 };
 
 /* ============================================================
-   State & storage
+   Supabase connection, state & data layer
    ============================================================ */
-const KEY='auditTracker.v1';
+const SUPABASE_URL='https://benltlfjobsgmpdsqmyp.supabase.co';
+const SUPABASE_KEY='sb_publishable_URQWzhsrh70XJeZkQTJ89A_2_aZS5IE';
+const EMAIL_DOMAIN='audit-tracker.local';
+const sb=(typeof supabase!=='undefined'&&supabase.createClient)?supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}):null;
+
+const KEY='auditTracker.v1';           // pre-login browser data (offered for import)
 const DEF_ENG={entity:'',periodEnd:'',materiality:50000,pmPct:75,ctPct:5,fluctPct:20,cutoffDays:5,holidays:'',preparer:''};
-let S={eng:{...DEF_ENG},files:[],issues:[],seq:1};
+const WB_COLS='id,name,size,sample,summary,last_run,uploaded_by,created_at,sheet_names';
+let S={eng:{...DEF_ENG},files:[],issues:[],profiles:[]};
+let SHEETS={};                         // workbook id -> parsed sheets (loaded on demand)
+let ME=null;                           // signed-in profile
 let UI={view:'dashboard',fileId:null,sheet:null,focus:null,refFocus:null,filters:{q:'',risk:'',prio:'',status:'',cat:'',file:''},sort:'priority',refQ:'',refKind:''};
-let storageNote='';
-function load(){
-  try{const t=localStorage.getItem(KEY); if(t){const o=JSON.parse(t); S={...S,...o,eng:{...DEF_ENG,...(o.eng||{})}};}
-    const u=localStorage.getItem(KEY+'.ui'); if(u){const o=JSON.parse(u); UI.sort=o.sort||UI.sort; UI.filters={...UI.filters,...(o.filters||{})};}
-  }catch(e){storageNote='Browser storage unavailable — changes last for this session only';}
+const isAdmin=()=>!!ME&&ME.role==='admin';
+
+function loadPrefs(){try{const u=localStorage.getItem(KEY+'.ui');if(u){const o=JSON.parse(u);UI.sort=o.sort||UI.sort;UI.filters={...UI.filters,...(o.filters||{})};}}catch(e){}}
+function savePrefs(){try{localStorage.setItem(KEY+'.ui',JSON.stringify({sort:UI.sort,filters:UI.filters}));}catch(e){}}
+
+let pendingWrites=0;
+function syncState(t){const el=document.getElementById('savestate');if(el)el.textContent=t;}
+const errMsg=e=>(e&&(e.message||e.error_description))||String(e);
+async function db(q){
+  pendingWrites++;syncState('Saving…');let failed=false;
+  try{const {data,error}=await q;if(error)throw error;return data;}
+  catch(e){failed=true;console.error(e);toast('Could not save: '+errMsg(e));throw e;}
+  finally{pendingWrites--;syncState(failed?'Save failed':pendingWrites?'Saving…':'All changes saved');}
 }
-function save(){
-  const el=document.getElementById('savestate');
-  try{localStorage.setItem(KEY,JSON.stringify(S)); localStorage.setItem(KEY+'.ui',JSON.stringify({sort:UI.sort,filters:UI.filters})); el.textContent='Saved in this browser';}
-  catch(e){
-    try{const lite={...S,files:S.files.map(f=>({...f,sheets:[],stripped:true}))}; localStorage.setItem(KEY,JSON.stringify(lite)); el.textContent='Saved (workbook too large to keep; issues kept)';}
-    catch(e2){el.textContent=storageNote||'Not saved — browser storage unavailable';}
+
+const ms=t=>t?new Date(t).getTime():null;
+function rowToIssue(r){return{id:r.id,code:r.code,fp:r.fp,fileId:r.workbook_id,fileName:r.file_name,sheet:r.sheet,cells:r.cells||[],title:r.title,detail:r.detail,
+  amount:r.amount==null?null:Number(r.amount),category:r.category,assertion:r.assertion,risk:r.risk,prioOverride:r.prio_override,riskEdited:r.risk_edited,catEdited:r.cat_edited,
+  fraud:r.fraud,movement:r.movement,stale:r.stale,refs:r.refs||[],test:r.test,source:r.source,status:r.status,owner:r.owner,notes:r.notes,
+  createdAt:ms(r.created_at),createdBy:r.created_by,updatedAt:ms(r.updated_at),updatedBy:r.updated_by};}
+function issueToRow(i){return{id:i.id,fp:i.fp,workbook_id:i.fileId||null,file_name:i.fileName||'',sheet:i.sheet||'',cells:i.cells||[],title:i.title,detail:i.detail||'',
+  amount:i.amount==null||isNaN(i.amount)?null:i.amount,category:i.category,assertion:i.assertion||'',risk:i.risk,prio_override:i.prioOverride||null,
+  risk_edited:!!i.riskEdited,cat_edited:!!i.catEdited,fraud:!!i.fraud,movement:!!i.movement,stale:!!i.stale,refs:i.refs||[],test:i.test||null,
+  source:i.source||'manual',status:i.status||'Open',owner:i.owner||'',notes:i.notes||''};}
+function rowToFile(r){return{id:r.id,name:r.name,size:r.size,sample:r.sample,summary:r.summary,lastRun:ms(r.last_run),uploadedBy:r.uploaded_by,createdAt:ms(r.created_at),sheetNames:r.sheet_names||[]};}
+function rowToEng(r){return{entity:r.entity,periodEnd:r.period_end||'',materiality:Number(r.materiality),pmPct:Number(r.pm_pct),ctPct:Number(r.ct_pct),fluctPct:Number(r.fluct_pct),
+  cutoffDays:r.cutoff_days,holidays:r.holidays,preparer:r.preparer,updatedAt:ms(r.updated_at),updatedBy:r.updated_by};}
+function engToRow(e){return{entity:e.entity||'',period_end:e.periodEnd||null,materiality:+e.materiality||0,pm_pct:+e.pmPct||0,ct_pct:+e.ctPct||0,fluct_pct:+e.fluctPct||0,
+  cutoff_days:Math.round(+e.cutoffDays||0),holidays:e.holidays||'',preparer:e.preparer||''};}
+const who=id=>{const p=S.profiles.find(x=>x.id===id);return p?(p.full_name||p.username):'a removed user';};
+const when=t=>t?new Date(t).toLocaleString('en-SG',{dateStyle:'medium',timeStyle:'short'}):'';
+
+async function fetchAll(table,cols,order){
+  const out=[];
+  for(let from=0;;from+=1000){
+    const {data,error}=await sb.from(table).select(cols).order(order).range(from,from+999);
+    if(error)throw error; out.push(...data); if(data.length<1000)break;
   }
+  return out;
+}
+async function loadAll(){
+  const [e,w,i,p]=await Promise.all([
+    sb.from('engagement').select('*').eq('id',1).maybeSingle(),
+    fetchAll('workbooks',WB_COLS,'created_at'),
+    fetchAll('issues','*','created_at'),
+    sb.from('profiles').select('id,username,full_name,role').order('username')]);
+  if(e.error)throw e.error; if(p.error)throw p.error;
+  if(e.data)S.eng={...DEF_ENG,...rowToEng(e.data)};
+  S.files=w.map(rowToFile); S.issues=i.map(rowToIssue); S.profiles=p.data;
+  const mine=S.profiles.find(x=>x.id===(ME&&ME.id)); if(mine){ME=mine;renderUserBox();}
+}
+async function ensureSheets(file){
+  if(SHEETS[file.id])return SHEETS[file.id];
+  if(!file.sheetNames||!file.sheetNames.length)return null;
+  const {data,error}=await sb.from('workbooks').select('sheets').eq('id',file.id).single();
+  if(error){toast('Could not load workbook: '+errMsg(error));return null;}
+  SHEETS[file.id]=data.sheets||[];return SHEETS[file.id];
+}
+function mergeIssues(rows){(rows||[]).forEach(r=>{const i=rowToIssue(r);const k=S.issues.findIndex(x=>x.id===i.id);if(k>=0)S.issues[k]=i;else S.issues.push(i);});}
+async function upsertIssues(list){for(let k=0;k<list.length;k+=200){const rows=await db(sb.from('issues').upsert(list.slice(k,k+200).map(issueToRow)).select());mergeIssues(rows);}}
+async function deleteIssues(ids){for(let k=0;k<ids.length;k+=100){const part=ids.slice(k,k+100);await db(sb.from('issues').delete().in('id',part));S.issues=S.issues.filter(i=>!part.includes(i.id));}}
+async function saveIssue(i,fields){const r=await db(sb.from('issues').update(fields).eq('id',i.id).select().single());mergeIssues([r]);return S.issues.find(x=>x.id===i.id);}
+let engTimer=null;
+function saveEngSoon(){clearTimeout(engTimer);syncState('Saving…');engTimer=setTimeout(()=>db(sb.from('engagement').update(engToRow(S.eng)).eq('id',1)).catch(()=>{}),600);}
+async function insertWorkbook(meta,sheets){
+  const row={name:meta.name,size:meta.size||0,sample:!!meta.sample,summary:meta.summary||null,last_run:meta.lastRun?new Date(meta.lastRun).toISOString():null};
+  let w,stored=true;
+  try{w=await db(sb.from('workbooks').insert({...row,sheets,sheet_names:sheets.map(s=>s.name)}).select(WB_COLS).single());}
+  catch(e){w=await db(sb.from('workbooks').insert({...row,sheets:[],sheet_names:[]}).select(WB_COLS).single());stored=false;}
+  const f=rowToFile(w); SHEETS[f.id]=sheets; S.files.push(f);
+  if(!stored)toast('Workbook too large to share — cell view works in this session only; issues are saved for everyone');
+  return f;
+}
+
+/* ---------- realtime: refresh when teammates change data ---------- */
+let channel=null,rtTimer=null;
+function subscribeRealtime(){
+  if(channel)sb.removeChannel(channel);
+  channel=sb.channel('audit-tracker-sync');
+  ['issues','workbooks','engagement','profiles'].forEach(t=>channel.on('postgres_changes',{event:'*',schema:'public',table:t},onRemoteChange));
+  channel.subscribe();
+}
+function onRemoteChange(){
+  clearTimeout(rtTimer);
+  rtTimer=setTimeout(async()=>{
+    const a=document.activeElement;
+    if(pendingWrites||(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.closest('#main,#drawer,#modal'))){onRemoteChange();return;}
+    try{await loadAll();render();}catch(e){console.error(e);}
+  },1200);
+}
+
+/* ---------- data saved in this browser before sign-in ---------- */
+function legacyData(){try{const t=localStorage.getItem(KEY);if(!t)return null;const o=JSON.parse(t);
+  if(!((o.issues&&o.issues.length)||(o.files&&o.files.length)))return null;return o;}catch(e){return null;}}
+function dismissLegacy(){try{const t=localStorage.getItem(KEY);if(t)localStorage.setItem(KEY+'.imported',t);localStorage.removeItem(KEY);}catch(e){}}
+async function importLegacy(){
+  const o=legacyData();if(!o)return;
+  try{
+    const map={};
+    for(const f of (o.files||[])){const nf=await insertWorkbook(f,f.sheets||[]);map[f.id]=nf.id;}
+    const list=(o.issues||[]).map(i=>({...i,id:crypto.randomUUID(),fileId:map[i.fileId]||null,
+      fp:i.fp&&map[i.fileId]?i.fp.replace(i.fileId,map[i.fileId]):(i.fp||'import|'+uid())+'|'+uid(),
+      source:i.source==='auto'&&map[i.fileId]?'auto':'manual'}));
+    await upsertIssues(list);
+    if(o.eng&&!S.eng.entity){S.eng={...S.eng,...o.eng};await db(sb.from('engagement').update(engToRow(S.eng)).eq('id',1));}
+    dismissLegacy();toast(`Imported ${list.length} issue${list.length===1?'':'s'} and ${(o.files||[]).length} workbook${(o.files||[]).length===1?'':'s'}`);
+  }catch(e){/* db() already reported */}
+  render();
 }
 
 /* ============================================================
@@ -632,25 +769,27 @@ function runTests(file){
   return{issues:out,summary};
 }
 
-function runFile(file,silent){
-  if(!file.sheets||!file.sheets.length){toast('Workbook data is no longer stored — re-upload the file to re-run tests');return;}
-  const {issues,summary}=runTests(file);
+async function runFile(file,silent){
+  const sheets=await ensureSheets(file);
+  if(!sheets||!sheets.length){toast('This workbook’s cells aren’t stored — upload it again to re-run tests');return;}
+  const {issues,summary}=runTests({...file,sheets});
   const existing=S.issues.filter(i=>i.fileId===file.id&&i.source==='auto');
   const byFp={};existing.forEach(i=>byFp[i.fp]=i);
-  const seen=new Set();
+  const seen=new Set(),ups=[],dels=[];
   issues.forEach(n=>{
-    const old=byFp[n.fp]; seen.add(n.fp);
-    if(old){Object.assign(old,{cells:n.cells,title:n.title,detail:n.detail,amount:n.amount,refs:old.refsEdited?old.refs:n.refs,stale:false,fileName:n.fileName});
-      if(!old.riskEdited)old.risk=n.risk; if(!old.catEdited)old.category=n.category;}
-    else{n.id='AT-'+String(S.seq++).padStart(3,'0');S.issues.push(n);}
+    const old=byFp[n.fp];seen.add(n.fp);
+    if(old){const u={...old,cells:n.cells,title:n.title,detail:n.detail,amount:n.amount,refs:n.refs,stale:false,fileName:n.fileName,fraud:n.fraud,movement:n.movement,assertion:n.assertion,test:n.test};
+      if(!old.riskEdited)u.risk=n.risk; if(!old.catEdited)u.category=n.category; ups.push(u);}
+    else ups.push({...n,id:crypto.randomUUID()});
   });
-  S.issues=S.issues.filter(i=>{
-    if(i.fileId!==file.id||i.source!=='auto'||seen.has(i.fp))return true;
-    if(i.status==='Open'&&!i.notes&&!i.owner)return false;
-    i.stale=true;return true;});
-  file.lastRun=Date.now();file.summary=summary;
-  save();
-  if(!silent)toast(`${issues.length} issue${issues.length===1?'':'s'} found in ${file.name}`);
+  existing.forEach(i=>{if(seen.has(i.fp))return; if(i.status==='Open'&&!i.notes&&!i.owner)dels.push(i.id); else if(!i.stale)ups.push({...i,stale:true});});
+  try{
+    await upsertIssues(ups);
+    if(dels.length)await deleteIssues(dels);
+    await db(sb.from('workbooks').update({summary,last_run:new Date().toISOString()}).eq('id',file.id));
+    file.summary=summary;file.lastRun=Date.now();
+    if(!silent)toast(`${issues.length} issue${issues.length===1?'':'s'} found in ${file.name}`);
+  }catch(e){/* reported by db() */}
 }
 
 /* ============================================================
@@ -721,11 +860,13 @@ function sampleFile(){
    ============================================================ */
 function setView(v){UI.view=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));render();window.scrollTo(0,0);}
 function render(){
+  if(!ME)return;
   const m=$('#main');
-  ({dashboard:renderDashboard,workpapers:renderWorkpapers,issues:renderIssues,references:renderReferences,engagement:renderEngagement}[UI.view]||renderDashboard)(m);
+  ({dashboard:renderDashboard,workpapers:renderWorkpapers,issues:renderIssues,references:renderReferences,engagement:renderEngagement,users:renderUsers}[UI.view]||renderDashboard)(m);
 }
 const riskPill=r=>`<span class="pill r-${r}">${r} risk</span>`;
 const prioBadge=(p,big)=>big?`<div class="prio p-${p}">${p}</div>`:`<span class="pill p-${p}">${p}</span>`;
+const codeOf=id=>{const i=S.issues.find(x=>x.id===id);return i?i.code:id;};
 const sortIssues=arr=>{
   const pr={P1:3,P2:2,P3:1};
   const f={priority:(a,b)=>(pr[prio(b)]-pr[prio(a)])||(score(b)-score(a))||(Math.abs(b.amount||0)-Math.abs(a.amount||0)),
@@ -736,6 +877,16 @@ const sortIssues=arr=>{
 };
 const isOpen=i=>i.status!=='Resolved'&&i.status!=='Not an issue';
 
+function legacyBanner(){
+  const o=legacyData();if(!o)return '';
+  const ni=(o.issues||[]).length,nf=(o.files||[]).length;
+  return `<div class="card banner notice acc"><div style="flex:1;min-width:240px"><b>Data found in this browser</b><div class="small muted">${ni} issue${ni===1?'':'s'} and ${nf} workbook${nf===1?'':'s'} saved here before sign-in was added. Import them into the shared workspace?</div></div>
+    <button class="btn primary sm" id="impYes">Import to team workspace</button><button class="btn ghost sm" id="impNo">Dismiss</button></div>`;
+}
+function bindLegacy(m){const y=m.querySelector('#impYes'),n=m.querySelector('#impNo');
+  if(y)y.onclick=()=>{y.disabled=true;y.textContent='Importing…';importLegacy();};
+  if(n)n.onclick=()=>{dismissLegacy();render();};}
+
 function renderDashboard(m){
   const th=thresholds();const open=S.issues.filter(isOpen);
   const p1=open.filter(i=>prio(i)==='P1');
@@ -744,11 +895,13 @@ function renderDashboard(m){
   const cats={};open.forEach(i=>{const c=cats[i.category]=cats[i.category]||{High:0,Medium:0,Low:0,n:0};c[i.risk]++;c.n++;});
   const maxN=Math.max(1,...Object.values(cats).map(c=>c.n));
   const top=sortIssues(open).slice(0,6);
+  const mineOpen=open.filter(i=>i.owner&&ME&&[ME.username,ME.full_name].filter(Boolean).map(s=>s.toLowerCase()).includes(i.owner.toLowerCase())).length;
   m.innerHTML=`
   <h1>${esc(S.eng.entity||'Audit overview')}</h1>
   <p class="sub">${S.eng.periodEnd?'Period ended '+fmtDate(parseDate(S.eng.periodEnd))+' · ':''}SFRS(I) financial statements · Audit under SSAs</p>
+  ${legacyBanner()}
   <div class="grid g4">
-    <div class="card kpi"><div class="lab">Open issues</div><div class="val">${open.length}</div><div class="note">${S.issues.length-open.length} resolved or cleared</div></div>
+    <div class="card kpi"><div class="lab">Open issues</div><div class="val">${open.length}</div><div class="note">${mineOpen} assigned to you · ${S.issues.length-open.length} closed</div></div>
     <div class="card kpi hot"><div class="lab">P1 — act now</div><div class="val">${p1.length}</div><div class="note">Highest risk × amount</div></div>
     <div class="card kpi"><div class="lab">Amount flagged (open)</div><div class="val">${fmtAmt(flagged)}</div><div class="note">${th.PM?(flagged/th.PM).toFixed(1)+'× PM · excludes YoY movements':'Set materiality in Engagement'}</div></div>
     <div class="card kpi"><div class="lab">At or above materiality</div><div class="val">${aboveOM}</div><div class="note">Overall materiality ${fmtAmt(th.OM)}</div></div>
@@ -775,8 +928,8 @@ function renderDashboard(m){
       </div>
     </div>
   </div>`;
-  m.querySelectorAll('.catlink').forEach(a=>a.onclick=()=>{UI.filters={...UI.filters,cat:a.dataset.cat};});
-  bindIssueCards(m);
+  m.querySelectorAll('.catlink').forEach(a=>a.onclick=()=>{UI.filters={...UI.filters,cat:a.dataset.cat};savePrefs();});
+  bindIssueCards(m);bindLegacy(m);
 }
 function emptyState(){return `<div class="empty"><div class="big">Nothing flagged yet</div><p>Upload an Excel workbook, or try the sample, to run the audit tests.</p><div class="row" style="justify-content:center"><button class="btn primary" data-act="upload">Upload Excel</button><button class="btn" data-act="sample">Load sample workbook</button></div></div>`;}
 
@@ -786,7 +939,7 @@ function issueCard(i,compact){
     ${prioBadge(p,true)}
     <div>
       <div class="t">${esc(i.title)}</div>
-      <div class="meta"><span>${esc(i.id)}</span><span>${esc(i.category)}</span><span class="loc">${loc}</span>${i.fileName?`<span>${esc(i.fileName)}</span>`:''}${i.stale?'<span>Not detected on latest run</span>':''}</div>
+      <div class="meta"><span>${esc(i.code)}</span><span>${esc(i.category)}</span><span class="loc">${loc}</span>${i.fileName?`<span>${esc(i.fileName)}</span>`:''}${i.owner?`<span>Owner: ${esc(i.owner)}</span>`:''}${i.stale?'<span>Not detected on latest run</span>':''}</div>
       ${compact?'':`<div class="chips">${(i.refs||[]).map(r=>`<span class="chip" data-ref="${esc(r)}">${esc(refLabel(r))}</span>`).join('')}</div>`}
     </div>
     <div class="right"><div class="amt">${i.amount==null?'<span class="faint" style="font-size:16px">No amount</span>':fmtAmt(i.amount)}<small>${i.amount!=null&&thresholds().PM?(Math.abs(i.amount)/thresholds().PM*100).toFixed(0)+'% of PM':''}</small></div>
@@ -801,16 +954,16 @@ function bindIssueCards(root){
 
 /* ---------- Workpapers ---------- */
 function renderWorkpapers(m){
-  if(!UI.fileId&&S.files.length)UI.fileId=S.files[S.files.length-1].id;
+  if((!UI.fileId||!S.files.find(x=>x.id===UI.fileId))&&S.files.length)UI.fileId=S.files[S.files.length-1].id;
   const f=S.files.find(x=>x.id===UI.fileId);
   m.innerHTML=`
-  <h1>Workpapers</h1><p class="sub">Upload trial balances, financial statements or general-ledger listings (.xlsx, .xls, .csv). Tests run automatically.</p>
+  <h1>Workpapers</h1><p class="sub">Upload trial balances, financial statements or general-ledger listings (.xlsx, .xls, .csv). Tests run automatically and results are shared with your team.</p>
   <div class="drop" id="drop"><div class="big">Drop Excel files here</div><p class="muted" style="margin:0 0 16px">or</p>
     <div class="row" style="justify-content:center"><button class="btn primary" data-act="upload">Choose files</button><button class="btn" data-act="sample">Load sample workbook</button></div>
-    <p class="faint small" style="margin:14px 0 0">Files are read in your browser and stored in this browser only. Up to ${MAXR.toLocaleString()} rows × ${MAXC} columns per sheet.</p></div>
-  ${S.files.length?`<div class="grid g3" style="margin-top:18px">${S.files.map(x=>{const n=S.issues.filter(i=>i.fileId===x.id&&isOpen(i)).length;return `
+    <p class="faint small" style="margin:14px 0 0">Files are parsed in your browser; the extracted cells and results are saved to the team workspace. Up to ${MAXR.toLocaleString()} rows × ${MAXC} columns per sheet.</p></div>
+  ${S.files.length?`<div class="grid g3" style="margin-top:18px">${S.files.map(x=>{const n=S.issues.filter(i=>i.fileId===x.id&&isOpen(i)).length;const ns=x.sheetNames.length;return `
     <div class="filecard ${x.id===UI.fileId?'on':''}" data-file="${x.id}"><div class="fileicon">XLS</div><div style="min-width:0;flex:1"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.name)}</div>
-    <div class="small muted">${x.sheets?x.sheets.length:0} sheet${x.sheets&&x.sheets.length===1?'':'s'} · ${n} open issue${n===1?'':'s'}${x.stripped?' · data not stored':''}</div></div></div>`;}).join('')}</div>`:''}
+    <div class="small muted">${ns?`${ns} sheet${ns===1?'':'s'}`:'cells not stored'} · ${n} open · by ${esc(who(x.uploadedBy))}</div></div></div>`;}).join('')}</div>`:''}
   ${f?fileDetail(f):''}`;
   bindIssueCards(m);
   const drop=$('#drop');
@@ -821,28 +974,31 @@ function renderWorkpapers(m){
   if(f)bindFileDetail(m,f);
 }
 function fileDetail(f){
-  const sheets=f.sheets||[];
-  if(!UI.sheet||!sheets.find(s=>s.name===UI.sheet))UI.sheet=sheets[0]?sheets[0].name:null;
-  const sh=sheets.find(s=>s.name===UI.sheet);
+  const sheets=SHEETS[f.id];
+  if(!sheets&&f.sheetNames.length){ensureSheets(f).then(()=>{if(UI.view==='workpapers'&&UI.fileId===f.id)render();});}
+  if(sheets&&(!UI.sheet||!sheets.find(s=>s.name===UI.sheet)))UI.sheet=sheets[0]?sheets[0].name:null;
+  const sh=sheets?sheets.find(s=>s.name===UI.sheet):null;
   const fIss=S.issues.filter(i=>i.fileId===f.id&&isOpen(i));
   const sum=f.summary||{};
+  let body;
+  if(!f.sheetNames.length&&!sheets)body=`<div class="notice" style="margin-top:14px">This workbook was too large to store, so only its issues were saved. Upload it again to view cells or re-run tests.</div>`;
+  else if(!sheets)body=`<p class="muted" style="margin-top:14px">Loading workbook…</p>`;
+  else body=`<div class="tabs" style="margin-top:14px">${sheets.map(s=>{const n=fIss.filter(i=>i.sheet===s.name).length;return `<button data-sheet="${esc(s.name)}" class="${s.name===UI.sheet?'on':''}">${esc(s.name)}${n?`<span class="n">${n}</span>`:''}</button>`;}).join('')}</div>${sh?sheetTable(f,sh,fIss):''}`;
   return `
   <div class="grid g21" style="margin-top:18px">
     <div class="card">
       <div class="row"><h2 style="margin:0">Workbook</h2><span class="spacer"></span>
       ${sh?`<span class="small muted">Highlighted cells have issues — click one to open it</span>`:''}</div>
-      ${f.stripped||!sheets.length?`<div class="notice" style="margin-top:14px">The workbook was too large to keep in browser storage, so only its issues were saved. Upload it again to view cells or re-run tests.</div>`:`
-      <div class="tabs" style="margin-top:14px">${sheets.map(s=>{const n=fIss.filter(i=>i.sheet===s.name).length;return `<button data-sheet="${esc(s.name)}" class="${s.name===UI.sheet?'on':''}">${esc(s.name)}${n?`<span class="n">${n}</span>`:''}</button>`;}).join('')}</div>
-      ${sh?sheetTable(f,sh,fIss):''}`}
+      ${body}
     </div>
     <div class="grid" style="align-content:start">
       <div class="card">
         <div class="row"><h2 style="margin:0">Tests run</h2><span class="spacer"></span><button class="btn sm" id="rerun">Re-run</button></div>
-        <p class="small muted" style="margin:6px 0 10px">${f.lastRun?'Last run '+new Date(f.lastRun).toLocaleString('en-SG',{dateStyle:'medium',timeStyle:'short'}):'Not run yet'}</p>
+        <p class="small muted" style="margin:6px 0 10px">${f.lastRun?'Last run '+when(f.lastRun):'Not run yet'} · uploaded by ${esc(who(f.uploadedBy))}</p>
         <table class="t">${Object.entries(TESTS).map(([k,t])=>{const s=sum[k]||{};return `<tr title="${esc(t.desc)}"><td><div style="font-weight:500">${esc(t.name)}</div>${s.note?`<div class="small faint">${esc(s.note)}</div>`:''}</td>
           <td class="num">${s.applied?(s.count?`<span class="pill r-${t.risk==='High'?'High':'Medium'}">${s.count}</span>`:'<span class="faint">✓ 0</span>'):'<span class="faint small">n/a</span>'}</td></tr>`;}).join('')}</table>
       </div>
-      <div class="card"><h3>Remove file</h3><p class="small muted" style="margin-top:0">Deletes the workbook and its auto-detected issues. Manual issues stay.</p>
+      <div class="card"><h3>Remove file</h3><p class="small muted" style="margin-top:0">Deletes the workbook and its auto-detected issues for everyone. Manual issues stay.</p>
         <button class="btn sm danger" id="rmfile">Remove ${esc(f.name.length>28?f.name.slice(0,26)+'…':f.name)}</button>
         <div class="confirm row" id="rmconfirm"><span class="small">Sure?</span><button class="btn sm dark" id="rmyes">Yes, remove</button><button class="btn sm ghost" id="rmno">Cancel</button></div></div>
     </div>
@@ -859,35 +1015,43 @@ function sheetTable(f,sh,fIss){
     for(let j=0;j<ncol;j++){const v=r[j];const k=i+','+j;const cls=[];
       if(isNum(v))cls.push('n'); if(hl[k])cls.push('hl'); if(focusCells.has(k))cls.push('focus'); if(sh.f&&sh.f[k])cls.push('fx');
       const disp=v==null?'':isNum(v)&&yr?String(v):isNum(v)?(Math.abs(v)<1&&v!==0?v.toFixed(4):fmt(v,v%1?2:0)):esc(v);
-      h+=`<td class="${cls.join(' ')}" ${hl[k]?`data-hl="${hl[k].join(',')}" title="${esc(hl[k].join(', '))}"`:''} ${focusCells.has(k)?'data-focus="1"':''}>${disp}</td>`;}
+      h+=`<td class="${cls.join(' ')}" ${hl[k]?`data-hl="${hl[k].join(',')}" title="${esc(hl[k].map(codeOf).join(', '))}"`:''} ${focusCells.has(k)?'data-focus="1"':''}>${disp}</td>`;}
     h+='</tr>';});
   h+='</tbody></table></div>';
   if(sh.truncated)h+=`<p class="small muted">Sheet truncated to ${MAXR} rows × ${MAXC} columns.</p>`;
-  if(focus){const iss=S.issues.find(x=>x.id===focus.issueId);if(iss)h=`<div class="notice acc" style="margin-bottom:12px"><b>${esc(iss.id)}</b> — ${esc(iss.title)} · ${focus.cells.map(c=>c.a).slice(0,8).join(', ')}${focus.cells.length>8?'…':''}</div>`+h;}
+  if(focus){const iss=S.issues.find(x=>x.id===focus.issueId);if(iss)h=`<div class="notice acc" style="margin-bottom:12px"><b>${esc(iss.code)}</b> — ${esc(iss.title)} · ${focus.cells.map(c=>c.a).slice(0,8).join(', ')}${focus.cells.length>8?'…':''}</div>`+h;}
   return h;
 }
 function bindFileDetail(m,f){
   m.querySelectorAll('[data-sheet]').forEach(b=>b.onclick=()=>{UI.sheet=b.dataset.sheet;UI.focus=null;render();});
   m.querySelectorAll('td[data-hl]').forEach(td=>td.onclick=()=>openIssue(td.dataset.hl.split(',')[0]));
-  const rr=$('#rerun');if(rr)rr.onclick=()=>{runFile(f);render();};
+  const rr=$('#rerun');if(rr)rr.onclick=async()=>{rr.disabled=true;rr.textContent='Running…';await runFile(f);render();};
   const rm=$('#rmfile');if(rm){rm.onclick=()=>$('#rmconfirm').classList.add('on');$('#rmno').onclick=()=>$('#rmconfirm').classList.remove('on');
-    $('#rmyes').onclick=()=>{S.files=S.files.filter(x=>x.id!==f.id);S.issues=S.issues.filter(i=>!(i.fileId===f.id&&i.source==='auto'));UI.fileId=null;save();render();toast('File removed');};}
-  const fc=m.querySelector('td[data-focus]');if(fc)setTimeout(()=>fc.scrollIntoView({block:'center',inline:'nearest',behavior:'smooth'}),60);
+    $('#rmyes').onclick=async()=>{try{
+      await deleteIssues(S.issues.filter(i=>i.fileId===f.id&&i.source==='auto').map(i=>i.id));
+      await db(sb.from('workbooks').delete().eq('id',f.id));
+      S.files=S.files.filter(x=>x.id!==f.id);S.issues.forEach(i=>{if(i.fileId===f.id)i.fileId=null;});delete SHEETS[f.id];UI.fileId=null;render();toast('File removed');}catch(e){}};}
+  const fc=m.querySelector('td[data-focus]');if(fc&&UI.focus&&!UI.focus.scrolled){UI.focus.scrolled=true;setTimeout(()=>fc.scrollIntoView({block:'center',inline:'nearest',behavior:'smooth'}),60);}
 }
 async function handleFiles(list){
   if(typeof XLSX==='undefined'){toast('The spreadsheet reader could not load — check your connection and reload');return;}
   for(const file of list){
-    try{const buf=await file.arrayBuffer();const sheets=parseWorkbook(new Uint8Array(buf));
-      const f={id:uid(),name:file.name,size:file.size,uploadedAt:Date.now(),sheets};
-      S.files.push(f);UI.fileId=f.id;UI.sheet=null;UI.focus=null;runFile(f);}
-    catch(e){console.error(e);toast(`Could not read ${file.name}: ${e.message}`);}
+    let sheets;
+    try{sheets=parseWorkbook(new Uint8Array(await file.arrayBuffer()));}
+    catch(e){console.error(e);toast(`Could not read ${file.name}: ${e.message}`);continue;}
+    try{const f=await insertWorkbook({name:file.name,size:file.size},sheets);
+      UI.fileId=f.id;UI.sheet=null;UI.focus=null;await runFile(f);}catch(e){}
   }
   if(UI.view!=='workpapers')location.hash='workpapers';else render();
 }
-function loadSample(){
-  if(!S.eng.periodEnd)S.eng.periodEnd='2025-12-31';
-  if(!S.eng.entity)S.eng.entity='Harbour Components Pte Ltd';
-  const f=sampleFile();S.files.push(f);UI.fileId=f.id;UI.sheet=null;UI.focus=null;runFile(f);
+async function loadSample(){
+  if(!S.eng.periodEnd||!S.eng.entity){
+    S.eng.periodEnd=S.eng.periodEnd||'2025-12-31';S.eng.entity=S.eng.entity||'Harbour Components Pte Ltd';
+    try{await db(sb.from('engagement').update(engToRow(S.eng)).eq('id',1));}catch(e){}
+  }
+  const s=sampleFile();
+  try{const f=await insertWorkbook({name:s.name,size:0,sample:true},s.sheets);
+    UI.fileId=f.id;UI.sheet=null;UI.focus=null;await runFile(f);}catch(e){}
   if(UI.view!=='workpapers')location.hash='workpapers';else render();
 }
 
@@ -898,7 +1062,7 @@ function renderIssues(m){
     if(F.risk&&i.risk!==F.risk)return false; if(F.prio&&prio(i)!==F.prio)return false;
     if(F.status==='open'&&!isOpen(i))return false; if(F.status&&F.status!=='open'&&i.status!==F.status)return false;
     if(F.cat&&i.category!==F.cat)return false; if(F.file&&i.fileId!==F.file)return false;
-    if(F.q){const q=F.q.toLowerCase();if(![i.id,i.title,i.detail,i.sheet,i.fileName,i.notes,i.owner,(i.refs||[]).join(' '),(i.cells||[]).map(c=>c.a).join(' ')].join(' ').toLowerCase().includes(q))return false;}
+    if(F.q){const q=F.q.toLowerCase();if(![i.code,i.title,i.detail,i.sheet,i.fileName,i.notes,i.owner,(i.refs||[]).join(' '),(i.cells||[]).map(c=>c.a).join(' ')].join(' ').toLowerCase().includes(q))return false;}
     return true;});
   list=sortIssues(list);
   const tot=list.reduce((s,i)=>s+Math.abs(i.amount||0),0);
@@ -907,7 +1071,7 @@ function renderIssues(m){
   <div class="row" style="align-items:flex-end"><div><h1>Issues</h1><p class="sub" style="margin-bottom:18px">${list.length} shown · ${fmtAmt(tot)} total · P1 ${cnt('P1')} · P2 ${cnt('P2')} · P3 ${cnt('P3')}</p></div>
   <span class="spacer"></span><div class="row" style="margin-bottom:18px"><button class="btn" id="copycsv">Copy as CSV</button><button class="btn primary" id="addissue">Add issue</button></div></div>
   <div class="filters">
-    <input type="text" id="fq" placeholder="Search title, cell, standard, notes…" value="${esc(F.q)}">
+    <input type="text" id="fq" placeholder="Search title, cell, standard, owner, notes…" value="${esc(F.q)}">
     <select id="fprio"><option value="">All priorities</option>${['P1','P2','P3'].map(p=>`<option ${F.prio===p?'selected':''}>${p}</option>`).join('')}</select>
     <select id="frisk"><option value="">All risk levels</option>${['High','Medium','Low'].map(p=>`<option ${F.risk===p?'selected':''}>${p}</option>`).join('')}</select>
     <select id="fcat"><option value="">All categories</option>${CATS.map(c=>`<option ${F.cat===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
@@ -918,29 +1082,31 @@ function renderIssues(m){
   </div>
   ${list.length?`<div class="ilist">${list.map(i=>issueCard(i)).join('')}</div>`:(S.issues.length?'<div class="card empty"><div class="big">No issues match these filters</div></div>':`<div class="card">${emptyState()}</div>`)}`;
   bindIssueCards(m);
-  const upd=(k,v)=>{UI.filters[k]=v;save();renderIssues(m);};
-  $('#fq').oninput=e=>{UI.filters.q=e.target.value;clearTimeout(UI._qt);UI._qt=setTimeout(()=>{const pos=e.target.selectionStart;renderIssues(m);const q=$('#fq');q.focus();q.setSelectionRange(pos,pos);},250);};
+  const upd=(k,v)=>{UI.filters[k]=v;savePrefs();renderIssues(m);};
+  $('#fq').oninput=e=>{UI.filters.q=e.target.value;savePrefs();clearTimeout(UI._qt);UI._qt=setTimeout(()=>{const pos=e.target.selectionStart;renderIssues(m);const q=$('#fq');q.focus();q.setSelectionRange(pos,pos);},250);};
   $('#fprio').onchange=e=>upd('prio',e.target.value);$('#frisk').onchange=e=>upd('risk',e.target.value);$('#fcat').onchange=e=>upd('cat',e.target.value);$('#fstatus').onchange=e=>upd('status',e.target.value);
   if($('#ffile'))$('#ffile').onchange=e=>upd('file',e.target.value);
-  $('#fsort').onchange=e=>{UI.sort=e.target.value;save();renderIssues(m);};
-  if($('#fclear'))$('#fclear').onclick=()=>{UI.filters={q:'',risk:'',prio:'',status:'',cat:'',file:''};save();renderIssues(m);};
+  $('#fsort').onchange=e=>{UI.sort=e.target.value;savePrefs();renderIssues(m);};
+  if($('#fclear'))$('#fclear').onclick=()=>{UI.filters={q:'',risk:'',prio:'',status:'',cat:'',file:''};savePrefs();renderIssues(m);};
   $('#addissue').onclick=()=>openIssueForm();
   $('#copycsv').onclick=()=>copyCSV(list);
 }
 function copyCSV(list){
-  const cols=['ID','Priority','Risk','Category','Assertion','Title','Amount','File','Sheet','Cells','Standards','Status','Owner','Notes','Detail'];
+  const cols=['ID','Priority','Risk','Category','Assertion','Title','Amount','File','Sheet','Cells','Standards','Status','Owner','Notes','Detail','Created by','Last updated by','Last updated'];
   const q=v=>{const s=String(v??'');return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
-  const csv=[cols.join(',')].concat(list.map(i=>[i.id,prio(i),i.risk,i.category,i.assertion,i.title,i.amount??'',i.fileName,i.sheet,(i.cells||[]).map(c=>c.a).join(' '),(i.refs||[]).map(refLabel).join('; '),i.status,i.owner,i.notes,i.detail].map(q).join(','))).join('\n');
+  const csv=[cols.join(',')].concat(list.map(i=>[i.code,prio(i),i.risk,i.category,i.assertion,i.title,i.amount??'',i.fileName,i.sheet,(i.cells||[]).map(c=>c.a).join(' '),(i.refs||[]).map(refLabel).join('; '),i.status,i.owner,i.notes,i.detail,who(i.createdBy),who(i.updatedBy),when(i.updatedAt)].map(q).join(','))).join('\n');
   try{navigator.clipboard.writeText(csv).then(()=>toast(`Copied ${list.length} issues — paste into Excel`),()=>toast('Clipboard blocked by the browser'));}catch(e){toast('Clipboard blocked by the browser');}
 }
+const ownerOptions=()=>`<datalist id="ownerlist">${S.profiles.map(p=>`<option value="${esc(p.full_name||p.username)}">${esc(p.username)}</option>`).join('')}</datalist>`;
 
 /* ---------- Issue drawer ---------- */
 function openIssue(id){
   const i=S.issues.find(x=>x.id===id);if(!i)return;
   const th=thresholds();const p=prio(i);
   const refs=(i.refs||[]).map(r=>{const R=REFMAP[r];return R?`<div class="refq"><div class="hd"><b>${esc(refLabel(r))}</b><a href="#references" class="small" data-goref="${esc(r)}">Open in library →</a></div><div class="small muted">${esc(R.title)}</div><div class="txt">${esc(R.text)}</div></div>`:`<div class="refq"><b>${esc(r)}</b></div>`;}).join('');
+  const file=S.files.find(f=>f.id===i.fileId);
   $('#drawerInner').innerHTML=`
-    <div class="row"><span class="faint">${esc(i.id)}</span><span class="spacer"></span><button class="btn ghost sm" id="dclose">Close ✕</button></div>
+    <div class="row"><span class="faint">${esc(i.code)}</span><span class="spacer"></span><button class="btn ghost sm" id="dclose">Close ✕</button></div>
     <div class="row" style="margin:14px 0 8px;gap:8px">${prioBadge(p)}${riskPill(i.risk)}<span class="pill s-pill">${esc(i.category)}</span>${i.fraud?'<span class="pill s-pill">Fraud indicator</span>':''}</div>
     <h2 style="font-size:24px;margin:6px 0 4px;line-height:1.3">${esc(i.title)}</h2>
     <div style="font-size:30px;font-weight:700;margin:10px 0 2px">${i.amount==null?'<span class="faint" style="font-size:18px">No amount</span>':fmtAmt(i.amount)}</div>
@@ -949,40 +1115,43 @@ function openIssue(id){
     <div class="where">
       ${i.sheet?`<div class="crumb">${esc(i.fileName||'')} ▸ ${esc(i.sheet)} ▸ <b>${(i.cells||[]).slice(0,10).map(c=>esc(c.a)).join(', ')}${(i.cells||[]).length>10?' …':''}</b></div>
       <div class="small muted" style="margin-top:4px">Assertion: ${esc(i.assertion||'—')}${i.test?` · Test: ${esc(TESTS[i.test]?TESTS[i.test].name:i.test)}`:' · Added manually'}</div>
-      ${S.files.find(f=>f.id===i.fileId&&f.sheets&&f.sheets.length)?'<button class="btn sm primary" id="goto" style="margin-top:12px">Show in workbook</button>':''}`:`<div class="muted">Not linked to a workbook cell.</div>`}
+      ${file&&(file.sheetNames.length||SHEETS[file.id])?'<button class="btn sm primary" id="goto" style="margin-top:12px">Show in workbook</button>':''}`:`<div class="muted">Not linked to a workbook cell.</div>`}
     </div>
     <h3 style="margin-top:22px">What was found</h3><p style="margin:0">${esc(i.detail||'—')}</p>
     <h3 style="margin-top:22px">Standards</h3>${refs||'<p class="muted">No references linked.</p>'}
     <h3 style="margin-top:22px">Track</h3>
     <div class="grid g2">
       <div class="field"><label class="f">Status</label><select id="eStatus" style="width:100%">${['Open','In review','Awaiting client','Resolved','Not an issue'].map(s=>`<option ${i.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
-      <div class="field"><label class="f">Owner</label><input type="text" id="eOwner" style="width:100%" value="${esc(i.owner)}" placeholder="Who is following up"></div>
+      <div class="field"><label class="f">Owner</label><input type="text" id="eOwner" list="ownerlist" style="width:100%" value="${esc(i.owner)}" placeholder="Pick a team member">${ownerOptions()}</div>
       <div class="field"><label class="f">Risk level</label><select id="eRisk" style="width:100%">${['High','Medium','Low'].map(s=>`<option ${i.risk===s?'selected':''}>${s}</option>`).join('')}</select></div>
-      <div class="field"><label class="f">Priority</label><select id="ePrio" style="width:100%"><option value="">Auto (${score(i)} pts → ${i.prioOverride?(score(i)>=5?'P1':score(i)>=3?'P2':'P3'):p})</option>${['P1','P2','P3'].map(s=>`<option ${i.prioOverride===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="field"><label class="f">Priority</label><select id="ePrio" style="width:100%"><option value="">Auto (${score(i)} pts → ${score(i)>=5?'P1':score(i)>=3?'P2':'P3'})</option>${['P1','P2','P3'].map(s=>`<option ${i.prioOverride===s?'selected':''}>${s}</option>`).join('')}</select></div>
       <div class="field" style="grid-column:1/-1"><label class="f">Risk category</label><select id="eCat" style="width:100%">${CATS.map(c=>`<option ${i.category===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
     </div>
     <div class="field"><label class="f">Working notes / conclusion</label><textarea id="eNotes" placeholder="Procedures performed, client response, conclusion…">${esc(i.notes)}</textarea></div>
+    <p class="small faint">Created by ${esc(who(i.createdBy))} · ${when(i.createdAt)}<br>Last updated by ${esc(who(i.updatedBy))} · ${when(i.updatedAt)}</p>
     <p class="small faint">Priority = risk level (High 3 · Medium 2 · Low 1) + amount vs materiality (≥ overall +3 · ≥ PM +2 · ≥ clearly trivial +1) + fraud indicator (+1). 5+ = P1, 3–4 = P2, else P3.</p>
-    <div class="row" style="margin-top:8px"><button class="btn danger sm" id="eDel">Delete issue</button><div class="confirm row" id="delc"><span class="small">Delete permanently?</span><button class="btn sm dark" id="delyes">Delete</button><button class="btn sm ghost" id="delno">Cancel</button></div></div>`;
+    <div class="row" style="margin-top:8px"><button class="btn danger sm" id="eDel">Delete issue</button><div class="confirm row" id="delc"><span class="small">Delete for everyone?</span><button class="btn sm dark" id="delyes">Delete</button><button class="btn sm ghost" id="delno">Cancel</button></div></div>`;
   $('#drawer').classList.add('on');$('#scrim').classList.add('on');$('#drawer').scrollTop=0;
   $('#dclose').onclick=closeDrawer;
-  const ch=(fn)=>e=>{fn(e.target.value);save();render();};
-  $('#eStatus').onchange=ch(v=>i.status=v);
-  $('#eOwner').oninput=e=>{i.owner=e.target.value;save();};$('#eOwner').onchange=()=>render();
-  $('#eRisk').onchange=e=>{i.risk=e.target.value;i.riskEdited=true;save();render();openIssue(i.id);};
-  $('#ePrio').onchange=e=>{i.prioOverride=e.target.value||null;save();render();openIssue(i.id);};
-  $('#eCat').onchange=e=>{i.category=e.target.value;i.catEdited=true;save();render();};
-  $('#eNotes').oninput=e=>{i.notes=e.target.value;save();};
+  const save=async(fields,reopen)=>{try{await saveIssue(i,fields);render();if(reopen&&$('#drawer').classList.contains('on'))openIssue(i.id);}catch(e){}};
+  $('#eStatus').onchange=e=>save({status:e.target.value});
+  $('#eRisk').onchange=e=>save({risk:e.target.value,risk_edited:true},true);
+  $('#ePrio').onchange=e=>save({prio_override:e.target.value||null},true);
+  $('#eCat').onchange=e=>save({category:e.target.value,cat_edited:true});
+  let tO,tN;
+  $('#eOwner').oninput=e=>{clearTimeout(tO);syncState('Saving…');tO=setTimeout(()=>save({owner:e.target.value}),700);};
+  $('#eNotes').oninput=e=>{clearTimeout(tN);syncState('Saving…');tN=setTimeout(()=>saveIssue(i,{notes:e.target.value}).catch(()=>{}),800);};
   $('#eDel').onclick=()=>$('#delc').classList.add('on');$('#delno').onclick=()=>$('#delc').classList.remove('on');
-  $('#delyes').onclick=()=>{S.issues=S.issues.filter(x=>x.id!==i.id);save();closeDrawer();render();toast('Issue deleted');};
+  $('#delyes').onclick=async()=>{try{await deleteIssues([i.id]);closeDrawer();render();toast('Issue deleted');}catch(e){}};
   if($('#goto'))$('#goto').onclick=()=>{UI.fileId=i.fileId;UI.sheet=i.sheet;UI.focus={fileId:i.fileId,sheet:i.sheet,cells:i.cells||[],issueId:i.id};closeDrawer();if(UI.view==='workpapers')render();else location.hash='workpapers';};
   $('#drawerInner').querySelectorAll('[data-goref]').forEach(a=>a.onclick=e=>{e.preventDefault();closeDrawer();gotoRef(a.dataset.goref);});
 }
 function closeDrawer(){$('#drawer').classList.remove('on');$('#modal').classList.remove('on');$('#scrim').classList.remove('on');}
+function openModal(html){$('#modalInner').innerHTML=html;$('#modal').classList.add('on');$('#scrim').classList.add('on');const c=$('#mclose');if(c)c.onclick=closeDrawer;}
 
 /* ---------- Manual issue form ---------- */
 function openIssueForm(){
-  $('#modalInner').innerHTML=`
+  openModal(`
    <div class="row"><h2 style="margin:0">Add issue</h2><span class="spacer"></span><button class="btn ghost sm" id="mclose">Close ✕</button></div>
    <form id="iform" style="margin-top:18px">
     <div class="field"><label class="f">Title</label><input type="text" name="title" required style="width:100%" placeholder="e.g. Unrecorded liability — supplier statement difference"></div>
@@ -997,21 +1166,21 @@ function openIssueForm(){
      <div class="field"><label class="f">Cell(s)</label><input type="text" name="cells" style="width:100%" placeholder="e.g. B12, C12"></div>
     </div>
     <div class="grid g2"><div class="field"><label class="f">Assertion</label><input type="text" name="assertion" style="width:100%" placeholder="e.g. Completeness"></div>
-     <div class="field"><label class="f">Owner</label><input type="text" name="owner" style="width:100%"></div></div>
+     <div class="field"><label class="f">Owner</label><input type="text" name="owner" list="ownerlist" style="width:100%">${ownerOptions()}</div></div>
     <div class="field"><label class="f">What was found</label><textarea name="detail"></textarea></div>
     <div class="field"><label class="f">Link standards</label><input type="text" id="refsearch" placeholder="Filter, e.g. 240 or revenue" style="width:100%;margin-bottom:8px">
       <div class="reflist" id="reflist">${Object.entries(REFMAP).map(([k,r])=>`<label data-s="${esc((refLabel(k)+' '+r.title+' '+r.text).toLowerCase())}"><input type="checkbox" name="refs" value="${esc(k)}"><span><b>${esc(refLabel(k))}</b> <span class="muted">— ${esc(r.text.slice(0,90))}${r.text.length>90?'…':''}</span></span></label>`).join('')}</div></div>
-    <div class="row"><button class="btn primary" type="submit">Add issue</button><span class="small muted">Priority is calculated from risk and amount.</span></div>
-   </form>`;
-  $('#modal').classList.add('on');$('#scrim').classList.add('on');
-  $('#mclose').onclick=closeDrawer;
+    <div class="row"><button class="btn primary" type="submit" id="isub">Add issue</button><span class="small muted">Priority is calculated from risk and amount.</span></div>
+   </form>`);
   $('#refsearch').oninput=e=>{const q=e.target.value.toLowerCase();$('#reflist').querySelectorAll('label').forEach(l=>l.style.display=l.dataset.s.includes(q)?'':'none');};
-  $('#iform').onsubmit=e=>{e.preventDefault();const fd=new FormData(e.target);const file=S.files.find(f=>f.id===fd.get('file'));
+  $('#iform').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target);const file=S.files.find(f=>f.id===fd.get('file'));
+    const sh=file&&SHEETS[file.id]?SHEETS[file.id].find(x=>x.name===fd.get('sheet')):null;const o=sh?sh.origin:{r:0,c:0};
     const parseCells=s=>s.split(/[\s,;]+/).filter(Boolean).map(a=>{const m=a.toUpperCase().match(/^([A-Z]+)(\d+)$/);if(!m)return{a:a.toUpperCase(),i:-1,j:-1};let c=0;for(const ch of m[1])c=c*26+(ch.charCodeAt(0)-64);
-      const sh=file&&file.sheets?file.sheets.find(x=>x.name===fd.get('sheet')):null;const o=sh?sh.origin:{r:0,c:0};return{a:m[0],i:+m[2]-1-o.r,j:c-1-o.c};});
+      return{a:m[0],i:+m[2]-1-o.r,j:c-1-o.c};});
     const amt=fd.get('amount')===''?null:+fd.get('amount');
-    const iss={id:'AT-'+String(S.seq++).padStart(3,'0'),fp:'manual|'+uid(),fileId:file?file.id:null,fileName:file?file.name:'',sheet:fd.get('sheet')||'',cells:parseCells(fd.get('cells')||''),title:fd.get('title'),detail:fd.get('detail'),amount:amt,category:fd.get('category'),assertion:fd.get('assertion'),risk:fd.get('risk'),riskEdited:true,fraud:fd.get('category')==='Fraud risk',refs:fd.getAll('refs'),test:null,source:'manual',status:'Open',owner:fd.get('owner'),notes:'',createdAt:Date.now()};
-    S.issues.push(iss);save();closeDrawer();render();toast(`${iss.id} added`);};
+    const iss={id:crypto.randomUUID(),fp:'manual|'+uid(),fileId:file?file.id:null,fileName:file?file.name:'',sheet:fd.get('sheet')||'',cells:parseCells(fd.get('cells')||''),title:fd.get('title'),detail:fd.get('detail'),amount:amt,category:fd.get('category'),assertion:fd.get('assertion'),risk:fd.get('risk'),riskEdited:true,fraud:fd.get('category')==='Fraud risk',refs:fd.getAll('refs'),test:null,source:'manual',status:'Open',owner:fd.get('owner'),notes:''};
+    $('#isub').disabled=true;
+    try{await upsertIssues([iss]);closeDrawer();render();toast(`${S.issues.find(x=>x.id===iss.id).code} added`);}catch(e){$('#isub').disabled=false;}};
 }
 
 /* ---------- References ---------- */
@@ -1029,7 +1198,7 @@ function renderReferences(m){
    <div class="card std" id="${stdId(s.std)}"><div class="code">${esc(s.kind)}</div><h2 style="margin:2px 0 4px">${esc(s.std)}</h2><div class="muted" style="margin-bottom:10px">${esc(s.title)}</div>
     ${s.paras.map(([p,t])=>{const k=s.std+'#'+p;const L=linked[k]||[];const hit=UI.refFocus===k||(!UI.refFocus&&L.some(isOpen));return `
      <div class="para ${hit?'hit':''}" id="${paraId(k)}"><div class="pn">${/^[0-9A]/.test(p)?'¶ '+esc(p):esc(p)}</div><div>${esc(t)}
-     ${L.length?`<div class="links chips">${L.slice(0,6).map(i=>`<span class="chip" data-open="${i.id}">${esc(i.id)} · ${prio(i)}</span>`).join('')}${L.length>6?`<span class="small muted">+${L.length-6} more</span>`:''}</div>`:''}</div></div>`;}).join('')}
+     ${L.length?`<div class="links chips">${L.slice(0,6).map(i=>`<span class="chip" data-open="${i.id}">${esc(i.code)} · ${prio(i)}</span>`).join('')}${L.length>6?`<span class="small muted">+${L.length-6} more</span>`:''}</div>`:''}</div></div>`;}).join('')}
    </div>`).join('')||'<div class="card empty">No standards match.</div>'}</div>`;
   $('#rq').oninput=e=>{UI.refQ=e.target.value;UI.refFocus=null;clearTimeout(UI._rt);UI._rt=setTimeout(()=>{const pos=e.target.selectionStart;renderReferences(m);const el=$('#rq');el.focus();el.setSelectionRange(pos,pos);},250);};
   $('#rk').onchange=e=>{UI.refKind=e.target.value;renderReferences(m);};
@@ -1041,7 +1210,7 @@ function renderReferences(m){
 function renderEngagement(m){
   const e=S.eng;const th=thresholds();
   m.innerHTML=`
-  <h1>Engagement</h1><p class="sub">These settings drive the thresholds and priority ranking. Change them and re-run tests on each workbook.</p>
+  <h1>Engagement</h1><p class="sub">Shared with the whole team. These settings drive the thresholds and priority ranking.${e.updatedBy?` Last changed by ${esc(who(e.updatedBy))} · ${when(e.updatedAt)}.`:''}</p>
   <div class="grid g2">
    <div class="card"><h2>Entity</h2>
     <div class="field"><label class="f">Entity name</label><input type="text" data-k="entity" value="${esc(e.entity)}" style="width:100%"></div>
@@ -1059,27 +1228,151 @@ function renderEngagement(m){
     <div class="notice" id="thr">PM ${fmtAmt(th.PM)} · Clearly trivial ${fmtAmt(th.CT)}</div>
    </div>
   </div>
-  <div class="card" style="margin-top:18px"><div class="row"><div><h2 style="margin:0">Apply changes</h2><p class="muted small" style="margin:4px 0 0">Re-runs every stored workbook with the new thresholds. Your status, owner and notes are kept.</p></div><span class="spacer"></span><button class="btn primary" id="rerunall">Re-run all tests</button></div></div>
-  <div class="card" style="margin-top:18px"><h2>Data</h2><p class="muted small" style="margin-top:0">Everything is stored in this browser’s local storage. Nothing is uploaded to a server.</p>
-   <button class="btn danger sm" id="reset">Clear all data</button><div class="confirm row" id="resetc"><span class="small">This deletes all files, issues and settings.</span><button class="btn sm dark" id="resetyes">Clear everything</button><button class="btn sm ghost" id="resetno">Cancel</button></div></div>`;
-  m.querySelectorAll('[data-k]').forEach(inp=>inp.oninput=()=>{const k=inp.dataset.k;S.eng[k]=inp.type==='number'?(inp.value===''?'':+inp.value):inp.value;save();const t=thresholds();$('#thr').textContent=`PM ${fmtAmt(t.PM)} · Clearly trivial ${fmtAmt(t.CT)}`;});
-  $('#rerunall').onclick=()=>{let n=0;S.files.forEach(f=>{if(f.sheets&&f.sheets.length){runFile(f,true);n++;}});toast(n?`Re-ran tests on ${n} workbook${n>1?'s':''}`:'No stored workbooks to re-run');};
-  $('#reset').onclick=()=>$('#resetc').classList.add('on');$('#resetno').onclick=()=>$('#resetc').classList.remove('on');
-  $('#resetyes').onclick=()=>{S={eng:{...DEF_ENG},files:[],issues:[],seq:1};UI.fileId=null;UI.focus=null;save();render();toast('All data cleared');};
+  <div class="card" style="margin-top:18px"><div class="row"><div><h2 style="margin:0">Apply changes</h2><p class="muted small" style="margin:4px 0 0">Re-runs every stored workbook with the new thresholds. Status, owner and notes are kept.</p></div><span class="spacer"></span><button class="btn primary" id="rerunall">Re-run all tests</button></div></div>
+  ${isAdmin()?`<div class="card" style="margin-top:18px"><h2>Workspace data</h2><p class="muted small" style="margin-top:0">Stored in Supabase and shared by all users. Only administrators can clear it.</p>
+   <button class="btn danger sm" id="reset">Clear all workbooks and issues</button><div class="confirm row" id="resetc"><span class="small">This deletes every workbook and issue for all users.</span><button class="btn sm dark" id="resetyes">Clear everything</button><button class="btn sm ghost" id="resetno">Cancel</button></div></div>`:''}`;
+  m.querySelectorAll('[data-k]').forEach(inp=>inp.oninput=()=>{const k=inp.dataset.k;S.eng[k]=inp.type==='number'?(inp.value===''?'':+inp.value):inp.value;saveEngSoon();const t=thresholds();$('#thr').textContent=`PM ${fmtAmt(t.PM)} · Clearly trivial ${fmtAmt(t.CT)}`;});
+  $('#rerunall').onclick=async()=>{const b=$('#rerunall');b.disabled=true;b.textContent='Running…';let n=0;for(const f of S.files){if(f.sheetNames.length||SHEETS[f.id]){await runFile(f,true);n++;}}b.disabled=false;b.textContent='Re-run all tests';toast(n?`Re-ran tests on ${n} workbook${n>1?'s':''}`:'No stored workbooks to re-run');};
+  if(isAdmin()){$('#reset').onclick=()=>$('#resetc').classList.add('on');$('#resetno').onclick=()=>$('#resetc').classList.remove('on');
+    $('#resetyes').onclick=async()=>{try{await db(sb.from('issues').delete().not('id','is',null));await db(sb.from('workbooks').delete().not('id','is',null));
+      S.eng={...DEF_ENG};await db(sb.from('engagement').update(engToRow(S.eng)).eq('id',1));S.issues=[];S.files=[];SHEETS={};UI.fileId=null;UI.focus=null;render();toast('Workspace cleared');}catch(e){}};}
+}
+
+/* ---------- Users (admins) ---------- */
+function renderUsers(m){
+  if(!isAdmin()){m.innerHTML='<h1>Users</h1><div class="card empty"><div class="big">Administrators only</div><p>Ask an administrator to add or change users.</p></div>';return;}
+  m.innerHTML=`
+  <h1>Users</h1><p class="sub">Add team members and set their initial password. Passwords are stored by Supabase Auth; ask people to change theirs under Account after first sign-in.</p>
+  <div class="grid g21">
+   <div class="card"><h2>Team</h2><div id="ulist"><p class="muted">Loading…</p></div></div>
+   <div class="card"><h2>Add user</h2>
+    <form id="uform">
+     <div class="field"><label class="f">Username</label><input type="text" name="username" required pattern="[a-z0-9._\\-]{2,32}" autocapitalize="none" spellcheck="false" style="width:100%" placeholder="e.g. priya"><div class="small faint" style="margin-top:6px">Lowercase letters, numbers, dot, dash or underscore. Used to sign in.</div></div>
+     <div class="field"><label class="f">Full name</label><input type="text" name="full_name" style="width:100%" placeholder="e.g. Priya Nair"></div>
+     <div class="field"><label class="f">Role</label><select name="role" style="width:100%"><option value="auditor">Auditor — work on tests and issues</option><option value="admin">Administrator — also manage users</option></select></div>
+     <div class="field"><label class="f">Initial password</label><input type="text" name="password" required minlength="8" style="width:100%" autocomplete="off" placeholder="At least 8 characters"></div>
+     <div class="lerr" id="uerr"></div>
+     <button class="btn primary" id="usub">Add user</button>
+    </form></div>
+  </div>`;
+  loadUserList();
+  $('#uform').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target);$('#uerr').textContent='';$('#usub').disabled=true;
+    const {error}=await sb.rpc('admin_create_user',{p_username:fd.get('username').trim().toLowerCase(),p_password:fd.get('password'),p_full_name:fd.get('full_name').trim(),p_role:fd.get('role')});
+    $('#usub').disabled=false;
+    if(error){$('#uerr').textContent=errMsg(error);return;}
+    toast(`${fd.get('username')} added — they can sign in now`);e.target.reset();await loadAll();loadUserList();};
+}
+async function loadUserList(){
+  const el=$('#ulist');if(!el)return;
+  const {data,error}=await sb.rpc('admin_list_users');
+  if(error){el.innerHTML=`<p class="lerr">${esc(errMsg(error))}</p>`;return;}
+  el.innerHTML=`<table class="t"><tr><th>User</th><th>Role</th><th>Last sign-in</th><th></th></tr>${data.map(u=>`
+    <tr><td><div style="font-weight:600">${esc(u.full_name||u.username)}</div><div class="small muted">${esc(u.username)}${u.id===ME.id?' · you':''}</div></td>
+    <td><span class="pill ${u.role==='admin'?'r-High':'s-pill'}">${u.role==='admin'?'Administrator':'Auditor'}</span></td>
+    <td class="small muted">${u.last_sign_in_at?when(u.last_sign_in_at):'Never'}</td>
+    <td style="text-align:right;white-space:nowrap"><button class="btn sm ghost" data-u="${u.id}" data-a="edit">Edit</button><button class="btn sm ghost" data-u="${u.id}" data-a="pw">Reset password</button>${u.id!==ME.id?`<button class="btn sm ghost danger" data-u="${u.id}" data-a="del">Remove</button>`:''}</td></tr>`).join('')}</table>`;
+  el.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>userModal(data.find(u=>u.id===b.dataset.u),b.dataset.a));
+}
+function userModal(u,mode){
+  const title={edit:'Edit user',pw:'Reset password',del:'Remove user'}[mode];
+  const body={
+    edit:`<div class="field"><label class="f">Full name</label><input type="text" id="mName" style="width:100%" value="${esc(u.full_name)}"></div>
+      <div class="field"><label class="f">Role</label><select id="mRole" style="width:100%"><option value="auditor" ${u.role!=='admin'?'selected':''}>Auditor</option><option value="admin" ${u.role==='admin'?'selected':''}>Administrator</option></select></div>`,
+    pw:`<div class="field"><label class="f">New password for ${esc(u.username)}</label><input type="text" id="mPw" minlength="8" style="width:100%" autocomplete="off" placeholder="At least 8 characters"></div>
+      <p class="small muted">Give it to them directly; they can change it under Account. Sessions they already have stay signed in until they expire.</p>`,
+    del:`<p>Remove <b>${esc(u.full_name||u.username)}</b> (${esc(u.username)})? They will no longer be able to sign in. Issues they created are kept.</p>`}[mode];
+  openModal(`<div class="row"><h2 style="margin:0">${title}</h2><span class="spacer"></span><button class="btn ghost sm" id="mclose">Close ✕</button></div>
+    <div style="margin-top:18px">${body}<div class="lerr" id="merr"></div><div class="row"><button class="btn ${mode==='del'?'dark':'primary'}" id="mgo">${mode==='del'?'Remove user':'Save'}</button><button class="btn ghost" id="mcancel">Cancel</button></div></div>`);
+  $('#mcancel').onclick=closeDrawer;
+  $('#mgo').onclick=async()=>{
+    if(mode==='pw'&&$('#mPw').value.length<8){$('#merr').textContent='Use at least 8 characters.';return;}
+    let r;$('#mgo').disabled=true;
+    if(mode==='edit')r=await sb.rpc('admin_update_user',{p_user:u.id,p_full_name:$('#mName').value.trim(),p_role:$('#mRole').value});
+    if(mode==='pw')r=await sb.rpc('admin_set_password',{p_user:u.id,p_password:$('#mPw').value});
+    if(mode==='del')r=await sb.rpc('admin_delete_user',{p_user:u.id});
+    $('#mgo').disabled=false;
+    if(r.error){$('#merr').textContent=errMsg(r.error);return;}
+    closeDrawer();toast({edit:'User updated',pw:`Password reset for ${u.username}`,del:`${u.username} removed`}[mode]);
+    await loadAll();if(UI.view==='users')loadUserList();
+  };
+}
+
+/* ---------- Account (everyone) ---------- */
+function openAccount(){
+  openModal(`<div class="row"><h2 style="margin:0">Your account</h2><span class="spacer"></span><button class="btn ghost sm" id="mclose">Close ✕</button></div>
+    <p class="muted" style="margin:10px 0 18px">Signed in as <b>${esc(ME.username)}</b> · ${ME.role==='admin'?'Administrator':'Auditor'}</p>
+    <div class="field"><label class="f">Full name</label><div class="row"><input type="text" id="aName" style="flex:1" value="${esc(ME.full_name)}"><button class="btn" id="aNameGo">Save</button></div></div>
+    <h3 style="margin-top:22px">Change password</h3>
+    <div class="grid g2"><div class="field"><label class="f">New password</label><input type="password" id="aPw1" style="width:100%" autocomplete="new-password"></div>
+    <div class="field"><label class="f">Confirm new password</label><input type="password" id="aPw2" style="width:100%" autocomplete="new-password"></div></div>
+    <div class="lerr" id="aerr"></div>
+    <div class="row"><button class="btn primary" id="aPwGo">Change password</button></div>`);
+  $('#aNameGo').onclick=async()=>{try{await db(sb.from('profiles').update({full_name:$('#aName').value.trim()}).eq('id',ME.id));ME.full_name=$('#aName').value.trim();await loadAll();renderUserBox();render();toast('Name updated');}catch(e){}};
+  $('#aPwGo').onclick=async()=>{const a=$('#aPw1').value,b=$('#aPw2').value;$('#aerr').textContent='';
+    if(a.length<8){$('#aerr').textContent='Use at least 8 characters.';return;}
+    if(a!==b){$('#aerr').textContent='The two passwords don’t match.';return;}
+    $('#aPwGo').disabled=true;const {error}=await sb.auth.updateUser({password:a});$('#aPwGo').disabled=false;
+    if(error){$('#aerr').textContent=errMsg(error);return;}
+    closeDrawer();toast('Password changed');};
+}
+function renderUserBox(){
+  if(!ME)return;
+  const name=ME.full_name||ME.username;
+  $('#avatar').textContent=name.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  $('#avatar').classList.toggle('adm',ME.role==='admin');
+  $('#uname').innerHTML=`${esc(name)}<small>${ME.role==='admin'?'Admin':'Auditor'}</small>`;
+  $('#navUsers').hidden=!isAdmin();
 }
 
 /* ============================================================
-   Boot
+   Auth & boot
    ============================================================ */
+const VIEWS=['dashboard','workpapers','issues','references','engagement','users'];
+function route(){if(!ME)return;const h=location.hash.replace('#','');setView(VIEWS.includes(h)?h:'dashboard');}
+function showLogin(msg){
+  ME=null;document.body.classList.remove('authed');closeDrawer();
+  $('#lerr').textContent=msg||'';$('#lbtn').disabled=false;$('#lbtn').textContent='Sign in';
+  setTimeout(()=>{const u=$('#lu');if(u&&!u.value)u.focus();else if($('#lp'))$('#lp').focus();},50);
+}
+async function enter(user){
+  const {data:p,error}=await sb.from('profiles').select('id,username,full_name,role').eq('id',user.id).maybeSingle();
+  if(error||!p){await sb.auth.signOut();showLogin(error?errMsg(error):'This account isn’t set up for Audit Tracker. Ask an administrator to add you.');return;}
+  ME=p;document.body.classList.add('authed');renderUserBox();
+  $('#main').innerHTML='<div class="empty" style="padding-top:120px"><div class="big">Loading workspace…</div></div>';
+  try{await loadAll();}
+  catch(e){$('#main').innerHTML=`<div class="card empty" style="margin-top:60px"><div class="big">Couldn’t load the workspace</div><p>${esc(errMsg(e))}</p><button class="btn primary" onclick="location.reload()">Try again</button></div>`;return;}
+  syncState('All changes saved');
+  subscribeRealtime();route();
+}
+function signedOut(){
+  if(channel){sb.removeChannel(channel);channel=null;}
+  S={eng:{...DEF_ENG},files:[],issues:[],profiles:[]};SHEETS={};UI.fileId=null;UI.focus=null;
+  $('#lp').value='';showLogin();
+}
+$('#loginForm').onsubmit=async e=>{
+  e.preventDefault();
+  if(!sb){$('#lerr').textContent='The sign-in service could not load. Check your connection and reload.';return;}
+  const u=$('#lu').value.trim().toLowerCase(),pw=$('#lp').value;
+  const email=u.includes('@')?u:`${u}@${EMAIL_DOMAIN}`;
+  $('#lbtn').disabled=true;$('#lbtn').textContent='Signing in…';$('#lerr').textContent='';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+  if(error){$('#lbtn').disabled=false;$('#lbtn').textContent='Sign in';
+    $('#lerr').textContent=/invalid login|invalid credentials/i.test(error.message)?'Incorrect username or password.':errMsg(error);return;}
+  await enter(data.user);
+};
+$('#signOutBtn').onclick=async()=>{await sb.auth.signOut();signedOut();};
+$('#acctBtn').onclick=openAccount;
 $('#scrim').onclick=closeDrawer;
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
 $('#fileInput').onchange=e=>{handleFiles(e.target.files);e.target.value='';};
-const VIEWS=['dashboard','workpapers','issues','references','engagement'];
-function route(){const h=location.hash.replace('#','');setView(VIEWS.includes(h)?h:'dashboard');}
 window.addEventListener('hashchange',route);
-load();
-route();
-save();
+loadPrefs();
+(async()=>{
+  if(!sb){showLogin('The sign-in service could not load. Check your connection and reload.');return;}
+  sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'&&ME)setTimeout(signedOut,0);});
+  const {data:{session}}=await sb.auth.getSession();
+  if(session)await enter(session.user);else showLogin();
+})();
 </script>
 </body>
 </html>
